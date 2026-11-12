@@ -1,3 +1,4 @@
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 export function getToken() {
@@ -7,6 +8,7 @@ export function getToken() {
 export function decodeToken(token = getToken()) {
   try {
     if (!token) return null;
+
     const payload = token.split(".")[1];
     return JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
   } catch {
@@ -26,16 +28,12 @@ export function getRole() {
 export async function apiFetch(path, options = {}) {
   const token = getToken();
   const headers = new Headers(options.headers || {});
+
   headers.set("Content-Type", "application/json");
 
-  // // Your current LoggingFilter requires these headers.
-  // headers.set("check", "1234");
-  // headers.set("body", "1234");
-  //
-  // const role = getRole();
-  // if (role) headers.set("role", role);
-
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
 
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
@@ -44,6 +42,7 @@ export async function apiFetch(path, options = {}) {
 
   let data = null;
   const contentType = response.headers.get("content-type") || "";
+
   if (contentType.includes("application/json")) {
     data = await response.json();
   } else {
@@ -52,19 +51,36 @@ export async function apiFetch(path, options = {}) {
   }
 
   if (!response.ok && response.status !== 204) {
-    const message = data?.message || data?.error || `Request failed (${response.status})`;
+    const message =
+        data?.message ||
+        data?.error ||
+        (typeof data === "string" ? data : null) ||
+        `Request failed (${response.status})`;
+
     throw new Error(message);
   }
 
   return data;
 }
 
-export async function login(username, password) {
+// EMAIL-BASED LOGIN
+export async function login(email, password) {
   const data = await apiFetch("/Auth/login", {
     method: "POST",
-    body: JSON.stringify({ username, password })
+    body: JSON.stringify({
+      email: email.trim().toLowerCase(),
+      password
+    })
   });
-  localStorage.setItem("jobportal_token", data.SessionToken);
+
+  // Support common AuthResponse JSON property names
+  const token = data?.sessionToken || data?.SessionToken || data?.token;
+
+  if (!token) {
+    throw new Error("Login succeeded but JWT token was not found in the response.");
+  }
+
+  localStorage.setItem("jobportal_token", token);
   return data;
 }
 
@@ -72,10 +88,15 @@ export function logout() {
   localStorage.removeItem("jobportal_token");
 }
 
-export async function register(username, password) {
+// REGISTRATION WITH USERNAME, EMAIL AND PASSWORD
+export async function register(username, email, password) {
   return apiFetch("/user/Register", {
     method: "POST",
-    body: JSON.stringify({ username, password })
+    body: JSON.stringify({
+      username: username.trim(),
+      email: email.trim().toLowerCase(),
+      password
+    })
   });
 }
 
@@ -84,7 +105,9 @@ export async function getJobs(page = 0, size = 4) {
 }
 
 export async function searchJobs(keyword, page = 0, size = 4) {
-  return apiFetch(`/Base/jobs/search?keyword=${encodeURIComponent(keyword)}&page=${page}&size=${size}`);
+  return apiFetch(
+      `/Base/jobs/search?keyword=${encodeURIComponent(keyword)}&page=${page}&size=${size}`
+  );
 }
 
 export async function getJob(id) {

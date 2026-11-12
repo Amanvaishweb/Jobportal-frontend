@@ -177,39 +177,154 @@ function JobCard({job}) {
   </article>
 }
 
-function Auth({mode,onAuth}) {
-  const isLogin = mode === "login";
-  const [username,setUsername]=useState("");
-  const [password,setPassword]=useState("");
-  const [busy,setBusy]=useState(false);
-  const [error,setError]=useState("");
-  const navigate=useNavigate();
 
-  async function submit(e){
-    e.preventDefault(); setBusy(true); setError("");
+function Auth({ mode, onAuth }) {
+  const isLogin = mode === "login";
+
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const navigate = useNavigate();
+
+
+  async function submit(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+
     try {
-      if(isLogin) { await login(username,password); onAuth(); navigate("/jobs"); }
-      else { await register(username,password); navigate("/login"); }
-    } catch(e) { setError(e.message); }
-    finally { setBusy(false); }
+      if (isLogin) {
+        await login(email, password);
+      } else {
+        // First register the user
+        await register(username, email, password);
+
+        // Then automatically log in the newly registered user
+        await login(email, password);
+      }
+
+      // Update authentication state and navigate to Jobs
+      onAuth();
+      navigate("/jobs");
+
+    } catch (e) {
+      setError(e.message || "Something went wrong. Please try again.");
+    } finally {
+      setBusy(false);
+    }
   }
 
-  return <main className="auth-page">
-    <div className="auth-panel">
-      <div className="auth-brand"><span className="brand-mark"><BriefcaseBusiness size={19}/></span>JobPortal</div>
-      <div className="eyebrow">{isLogin ? "WELCOME BACK" : "GET STARTED"}</div>
-      <h1>{isLogin ? "Sign in to continue." : "Create your account."}</h1>
-      <p>{isLogin ? "Access your job search and secured portal features." : "Join the portal and start exploring opportunities."}</p>
-      {error && <div className="error">{error}</div>}
-      <form onSubmit={submit} className="form">
-        <label>Username<input value={username} onChange={e=>setUsername(e.target.value)} required autoComplete="username"/></label>
-        <label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} required autoComplete={isLogin?"current-password":"new-password"}/></label>
-        <button className="btn btn-primary full" disabled={busy}>{busy ? "Please wait..." : isLogin ? <><LogIn size={17}/> Sign in</> : <><UserPlus size={17}/> Create account</>}</button>
-      </form>
-      <div className="auth-switch">{isLogin ? "Don't have an account?" : "Already have an account?"} <Link to={isLogin?"/register":"/login"}>{isLogin?"Create one":"Sign in"}</Link></div>
-    </div>
-  </main>
+
+
+  return (
+      <main className="auth-page">
+        <div className="auth-panel">
+
+          <div className="auth-brand">
+          <span className="brand-mark">
+            <BriefcaseBusiness size={19} />
+          </span>
+            JobPortal
+          </div>
+
+          <div className="eyebrow">
+            {isLogin ? "WELCOME BACK" : "GET STARTED"}
+          </div>
+
+          <h1>
+            {isLogin
+                ? "Sign in to continue."
+                : "Create your account."}
+          </h1>
+
+          <p>
+            {isLogin
+                ? "Access your job search and secured portal features."
+                : "Join the portal and start exploring opportunities."}
+          </p>
+
+          {error && <div className="error">{error}</div>}
+
+          <form onSubmit={submit} className="form">
+
+            {!isLogin && (
+                <label>
+                  Username
+                  <input
+                      type="text"
+                      value={username}
+                      onChange={e => setUsername(e.target.value)}
+                      placeholder="Enter your username"
+                      required
+                      autoComplete="username"
+                  />
+                </label>
+            )}
+
+            <label>
+              Email
+              <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="Enter your email address"
+                  required
+                  autoComplete="email"
+              />
+            </label>
+
+            <label>
+              Password
+              <input
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  required
+                  minLength={8}
+                  autoComplete={
+                    isLogin ? "current-password" : "new-password"
+                  }
+              />
+            </label>
+
+            <button
+                className="btn btn-primary full"
+                type="submit"
+                disabled={busy}
+            >
+              {busy
+                  ? "Please wait..."
+                  : isLogin
+                      ? <><LogIn size={17} /> Sign in</>
+                      : <><UserPlus size={17} /> Create account</>
+              }
+            </button>
+
+          </form>
+
+          <div className="auth-switch">
+            {isLogin
+                ? "Don't have an account?"
+                : "Already have an account?"
+            }
+
+            {" "}
+
+            <Link to={isLogin ? "/register" : "/login"}>
+              {isLogin ? "Create one" : "Sign in"}
+            </Link>
+          </div>
+
+        </div>
+      </main>
+  );
 }
+
 
 function PostJob({role}) {
   const [form,setForm]=useState({title:"",company:"",location:"",street:"",city:"",state:"",pincode:"",skills:"Java, Spring Boot, MySQL"});
